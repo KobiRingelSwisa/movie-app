@@ -1,39 +1,72 @@
 import MovieCard from "../components/MovieCard";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { searchMovies, getPopularMovies } from "../services/api";
 
 function Home() {
   const [searchQuery, setSearchQuery] = useState("");
-  const movies = [
-    { id: 1, title: "John Wick", release_date: "2020" },
-    { id: 2, title: "Terminator", release_date: "1999" },
-    { id: 3, title: "Matrix", release_date: "1998" },
-  ];
+  const [movies, setMovies] = useState([]);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleSearch = (e) => {
+  useEffect(() => {
+    const loadPopularMovies = async () => {
+      try {
+        const popularMovies = await getPopularMovies();
+        setMovies(popularMovies);
+      } catch (error) {
+        setError("Failed to load movies...");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPopularMovies();
+  }, []);
+
+  const handleSearch = async (e) => {
     e.preventDefault();
-    alert(searchQuery);
+    if (!searchQuery.trim()) return;
+    if (loading) return;
+    setLoading(true);
+    try {
+      const searchResults = await searchMovies(searchQuery);
+      setMovies(searchResults);
+      setError(null);
+    } catch (error) {
+      setError("Failed to search movies...");
+    } finally {
+      setLoading(false);
+    }
     setSearchQuery("");
   };
 
   return (
-    <div>
-      <form onSubmit={handleSearch}>
+    <div className="p-8 w-full box-border">
+      <form
+        onSubmit={handleSearch}
+        className="max-w-xl mx-auto mb-8 flex gap-4 px-0 py-4 box-border"
+      >
         <input
+          className="flex-1 px-4 py-3 border-none rounded-md bg-gray-800 focus:outline-none text-white text-sm focus:shadow-[0_0_0_2px_#666]"
           type="text"
           placeholder="Search for movies..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
-        <button type="submit">Search</button>
+        <button className="px-6 py-3 bg-red-600 text-white rounded font-semibold transition-colors duration-200 whitespace-nowrap hover:bg-red-700" type="submit">Search</button>
       </form>
-      <div>
-        {movies.map(
-          (movie) =>
-            movie.title.toLowerCase().startsWith(searchQuery) && (
-              <MovieCard movie={movie} key={movie.id} />
-            )
-        )}
-      </div>
+
+      {error && <div>{error}</div>}
+
+      {loading ? (
+        <div>Loading...</div>
+      ) : (
+        <div>
+          {movies.map((movie) => (
+            <MovieCard movie={movie} key={movie.id} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
